@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -28,6 +29,29 @@ func ValidatePrefixParameter(prefix, prefixField string, oxr *resource.Composite
 	_, _, err := net.ParseCIDR(prefix)
 	if err != nil {
 		return field.Required(field.NewPath("parameters"), "invalid CIDR prefix address "+prefix)
+	}
+	return nil
+}
+
+func ValidateMultiCidrPrefixParameter(prefixField string, oxr *resource.Composite) *field.Error {
+	if prefixField == "" {
+		return field.Required(field.NewPath("parameters"), "multiPrefixField is required")
+	}
+	var multiPrefixes []v1beta1.MultiPrefix
+	err := oxr.Resource.GetValueInto(prefixField, &multiPrefixes)
+	if err != nil {
+		return field.Required(field.NewPath("parameters"), "cannot get multiPrefixes at multiPrefixField "+prefixField)
+	}
+
+	for _, mp := range multiPrefixes {
+		_, _, err := net.ParseCIDR(mp.Prefix)
+		if err != nil {
+			return field.Required(field.NewPath("parameters"), "invalid CIDR prefix address "+mp.Prefix)
+		}
+
+		if len(mp.NewBits) == 0 {
+			return field.Required(field.NewPath("parameters"), "newBits is required for each prefix in multiPrefixField")
+		}
 	}
 	return nil
 }
@@ -132,15 +156,17 @@ func ValidateParameters(p *v1beta1.Parameters, oxr *resource.Composite) *field.E
 	if p.CidrFunc == "" {
 		return field.Required(field.NewPath("parameters"), "cidrFunc is required")
 	}
-
-	fieldError := ValidatePrefixParameter(p.Prefix, p.PrefixField, oxr)
-	if fieldError != nil {
-		return fieldError
-	}
-
 	cidrFunc, err := oxr.Resource.GetString(p.CidrFunc)
 	if err != nil {
 		return field.Required(field.NewPath("parameters"), "cidrFunc is required")
+	}
+
+	log.Println("cidrFunc: ", cidrFunc)
+	if cidrFunc != "multiprefixloop" {
+		fieldError := ValidatePrefixParameter(p.Prefix, p.PrefixField, oxr)
+		if fieldError != nil {
+			return fieldError
+		}
 	}
 
 	switch cidrFunc {
@@ -154,7 +180,9 @@ func ValidateParameters(p *v1beta1.Parameters, oxr *resource.Composite) *field.E
 		return ValidateCidrSubnetsParameters(p, *oxr)
 	case "cidrsubnetloop":
 		return ValidateCidrSubnetloopParameters(p)
+	case "multiprefixloop":
+		return ValidateMultiCidrPrefixParameter(p.MultiPrefixField, oxr)
 	default:
-		return field.Required(field.NewPath("parameters"), "unexpected cidrFunc "+p.CidrFunc)
+		return field.Required(field.NewPath("parameters"), "unexpected cidrFunc "+cidrFunc)
 	}
 }

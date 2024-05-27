@@ -1,0 +1,20 @@
+apiVersion: platform.upbound.io/v1alpha1
+kind: XCIDR
+metadata:
+  name: cidr-subnets
+spec:
+  parameters:
+    cidrFunc: multiprefixloop
+    subnets:
+      - prefix: 10.0.0.0/20
+        newBits:
+        - 8
+        - 4
+        - 2
+      - prefix: 192.168.0.0/24
+        newBits: [
+          3, 3, 3,
+          3, 3, 3,
+          4, 4, 4,
+        ]
+

@@ -11,6 +11,14 @@ import (
 // This isn't a custom resource, in the sense that we never install its CRD.
 // It is a KRM-like object, so we generate a CRD to describe its schema.
 
+type MultiPrefix struct {
+	// Prefix is a CIDR block that is used as input for CIDR calculations
+	Prefix string `json:"prefix"`
+
+	// NewBits is a list of bits to allocate to the subnet
+	NewBits []int `json:"newBits"`
+}
+
 // Parameters can be used to provide input to this Function.
 // +kubebuilder:object:root=true
 // +kubebuilder:storageversion
@@ -19,14 +27,20 @@ type Parameters struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// cidrfunc is one of cidrhost, cidrnetmast, cidesubnet, cidrsubnets, cidrsubnetloop
+	// cidrfunc is one of cidrhost, cidrnetmast, cidesubnet, cidrsubnets, cidrsubnetloop, multiprefixloop
 	CidrFunc string `json:"cidrFunc"`
+
+	MultiPrefix []MultiPrefix `json:"multiPrefix,omitempty"`
+	// multiprefix field describes the input for cidrsubnetsloop function and
+	// is a list of CIDR blocks to NewBits mappings that are used as input for
+	// CIDR calculations
+	MultiPrefixField string `json:"multiPrefixField,omitempty"`
 
 	// prefix field
 	PrefixField string `json:"prefixField,omitempty"`
 
 	// prefix is a CIDR block that is used as input for CIDR calculations
-	Prefix string `json:"prefix"`
+	Prefix string `json:"prefix,omitempty"`
 
 	// hostnum field
 	HostNumField string `json:"hostNumField,omitempty"`

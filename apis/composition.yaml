@@ -21,3 +21,4 @@ spec:
         hostNumField: spec.parameters.hostNum
         offsetField: spec.parameters.offset
         outputField: spec.parameters.output
+        multiPrefixField: spec.parameters.subnets
