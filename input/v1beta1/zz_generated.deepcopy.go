@@ -33,6 +33,13 @@ func (in *Parameters) DeepCopyInto(out *Parameters) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	if in.MultiPrefix != nil {
+		in, out := &in.MultiPrefix, &out.MultiPrefix
+		*out = make([]MultiPrefix, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.NewBits != nil {
 		in, out := &in.NewBits, &out.NewBits
 		*out = make([]int, len(*in))

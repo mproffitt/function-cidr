@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -153,15 +152,16 @@ func ValidateCidrSubnetloopParameters(p *v1beta1.Parameters) *field.Error {
 
 // ValidateParameters validates the Parameters object.
 func ValidateParameters(p *v1beta1.Parameters, oxr *resource.Composite) *field.Error {
-	if p.CidrFunc == "" {
-		return field.Required(field.NewPath("parameters"), "cidrFunc is required")
-	}
-	cidrFunc, err := oxr.Resource.GetString(p.CidrFunc)
-	if err != nil {
-		return field.Required(field.NewPath("parameters"), "cidrFunc is required")
+	var cidrFunc string = p.CidrFunc
+	var err error
+
+	if p.CidrFuncField != "" {
+		cidrFunc, err = oxr.Resource.GetString(p.CidrFuncField)
+		if err != nil {
+			return field.Required(field.NewPath("parameters"), "cannot get cidrFunc at cidrFuncField "+p.CidrFuncField)
+		}
 	}
 
-	log.Println("cidrFunc: ", cidrFunc)
 	if cidrFunc != "multiprefixloop" {
 		fieldError := ValidatePrefixParameter(p.Prefix, p.PrefixField, oxr)
 		if fieldError != nil {
@@ -170,6 +170,8 @@ func ValidateParameters(p *v1beta1.Parameters, oxr *resource.Composite) *field.E
 	}
 
 	switch cidrFunc {
+	case "":
+		return field.Required(field.NewPath("parameters"), "cidrFunc is required")
 	case "cidrhost":
 		return ValidateCidrHostParameters(p, *oxr)
 	case "cidrnetmask":

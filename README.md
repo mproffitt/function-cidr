@@ -10,32 +10,36 @@ data routing efficiency on the internet.
 
 ## Overview
 
-This composition function offers 4 HashiCorp compatible
-IP Network Functions plus one custom wrapper. Follow the
-function links for detailed explanations of the function
-semantics.
+This composition function offers 4 HashiCorp compatible IP Network Functions
+plus two custom wrappers. Follow the function links for detailed explanations of
+the function semantics.
+
 - [cidrhost](https://developer.hashicorp.com/terraform/language/functions/cidrhost)
 - [cidrnetmask](https://developer.hashicorp.com/terraform/language/functions/cidrnetmask)
 - [cidrsubnet](https://developer.hashicorp.com/terraform/language/functions/cidrsubnet)
 - [cidrsubnets](https://developer.hashicorp.com/terraform/language/functions/cidrsubnets)
 - cidrsubnetloop wraps [cidrsubnet](https://developer.hashicorp.com/terraform/language/functions/cidrsubnet)
+- [multiprefixloop] wraps [cidrsubnets](https://developer.hashicorp.com/terraform/language/functions/cidrsubnets)
 
 To use this function, apply the following
 [functions.yaml](examples/functions.yaml)
 to your Crossplane management cluster.
-```
+
+```bash
 cat <<EOF|kubectl apply -f -
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
 metadata:
   name: upbound-function-cidr
 spec:
-  package: xpkg.upbound.io/upbound/function-cidr:v0.1.0
+  package: xpkg.upbound.io/upbound/function-cidr:v0.4.0
 EOF
 ```
+
 Call the function from a Crossplane composition as described below.
 
 ## Terminology
+
 The `cidrfunc` IP Network Functions have various input parameters.
 Below are brief descriptions for context.
 
@@ -45,15 +49,19 @@ Below are brief descriptions for context.
 - `netnum` is a whole number that can be represented as a binary integer with no more than newbits binary digits, which will be used to populate the additional bits added to the prefix.
 
 ## Usage
+
 Specify the `cidrfunc` calculation type in the composition function input.
 Valid values are as follows:
-```
+
+```yaml
 - cidrhost
 - cidrnetmask
 - cidrsubnet
 - cidrsubnets
 - cidrsubnetloop
+- multiprefixloop
 ```
+
 Specify a custom `outputfield` in the function input parameters
 when the output should appear at a different path
 than the respective `status.atFunction.cidr` sub field default path.
@@ -68,16 +76,19 @@ the function shall read the field path value from the specified
 field path in the XR.
 
 ### cidrhost
+
 The `cidrhost cidrfunc` requires a `hostnum` or `hostnumfield` as
 function input. `hostnum` is an integer.
 
 ### cidrnetmask
+
 The `cidrnetmask cidrfunc` does not require additional parameters
 beyond the `prefix`. The `prefix` can be read from an XR field
 when the `prefixField` path is specified in the function input
 instead of a `prefix` value.
 
 ### cidrsubnet
+
 The `cidrhost cidrsubnet` reauires a `netnum` or `netnumfield`,
 and a `newbits` or `newbitsfield` as function input.
 
@@ -85,18 +96,22 @@ and a `newbits` or `newbitsfield` as function input.
 `newBits` is one integer in an array of integers.
 
 ### cidrsubnets
+
 The `cidrhost cidrsubnets` reauires a `newBits`
  or `newBitsField` as function input.
 
 `newBits` is an array of integers.
 
 ### cidrsubnetloop
+
 The `cidrhost cidrsubnetloop` reauires the following input fields.
+
 - `newBits` (integer array) or `newBitsField`
 - `netNumCount` (integer) or `netNumCountField`
 - `netNumItems` (string array) or `netNumItemsField`
 - `offset` or `offsetfield`
-** netNumCount and netNumItems are mutually exclusive **
+
+**`netNumCount` and `netNumItems` are mutually exclusive**
 
 The `cidrsubnetloop` wrapper calculates `cidrsubnet` CIDRs using
 the `prefix` and `newBits` parameters as input. It performs the
@@ -105,7 +120,19 @@ iteration from `iteration`+`offset`. The iterations are either from
 0 to `netNumCount` -1 or from 0 to number of items in `netNumItemsCount`
 or their respective values from their XR field references.
 
+### multiprefixloop
+
+The `multiprefixloop` function requires a list of inputs
+
+- `prefix` The CIDR prefix to create subnets for
+- `newBits` An integer array defining how to split the prefix
+- `offset` An optional bit size to start the subnet range after
+
+If `offset` is specified, this is prepended to the `newBits` field immediately
+before calculations and then removed after the calculation is completed.
+
 ## Testing The Function
+
 Clone the repo. Run `make debug` and in a second terminal run `make render`
 and examine the output. Corresponding compositions and XR yaml can be
 found in the `examples` folder.

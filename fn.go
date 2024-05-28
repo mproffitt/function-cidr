@@ -56,8 +56,8 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1beta1.RunFunctionRequ
 	dxr.Resource.SetKind(oxr.Resource.GetKind())
 
 	cidrFunc := input.CidrFunc
-	if len(input.CidrFunc) > 0 {
-		cidrFunc, err = oxr.Resource.GetString(input.CidrFunc)
+	if len(input.CidrFuncField) > 0 {
+		cidrFunc, err = oxr.Resource.GetString(input.CidrFuncField)
 		if err != nil {
 			response.Fatal(rsp, errors.Wrapf(err, "cannot get cidrFunc from field %s for %s", input.CidrFunc, oxr.Resource.GetKind()))
 			return rsp, nil
@@ -66,7 +66,6 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1beta1.RunFunctionRequ
 
 	var prefix string
 	if cidrFunc != "multiprefixloop" {
-		log.Info("cidrFunc", "cidrFunc", cidrFunc)
 		prefix = input.Prefix
 		if len(input.PrefixField) > 0 {
 			prefix, err = oxr.Resource.GetString(input.PrefixField)
@@ -218,6 +217,10 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1beta1.RunFunctionRequ
 				continue
 			}
 
+			if multiPrefix.Offset > 0 {
+				newBits = append([]int{multiPrefix.Offset}, newBits...)
+			}
+
 			cidrs, err := CidrSubnets(prefix, newBits...)
 			if err != nil {
 				response.Fatal(rsp, errors.Wrapf(err, "cannot calculate Subnet CIDRs for %s", oxr.Resource.GetKind()))
@@ -228,7 +231,11 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1beta1.RunFunctionRequ
 			for _, cidr := range cidrs {
 				cidrSubnetsStringArray = append(cidrSubnetsStringArray, string(cidr))
 			}
+
 			subnetsByCidr[prefix] = cidrSubnetsStringArray
+			if multiPrefix.Offset > 0 {
+				subnetsByCidr[prefix] = cidrSubnetsStringArray[1:]
+			}
 		}
 
 		field, err := oxr.Resource.GetString(input.OutputField)
@@ -288,6 +295,7 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1beta1.RunFunctionRequ
 				return rsp, nil
 			}
 		}
+
 		for netNum = 0; netNum < netNumCount; netNum++ {
 			cidr, cidrSubnetErr := CidrSubnet(prefix, newBits[0], netNum+offset)
 			if cidrSubnetErr != nil {
@@ -296,6 +304,7 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1beta1.RunFunctionRequ
 			}
 			cidrSubnetLoopStringArray = append(cidrSubnetLoopStringArray, string(cidr))
 		}
+
 		field, err := oxr.Resource.GetString(input.OutputField)
 		if err != nil {
 			field = "status.atFunction.cidr.subnets"
