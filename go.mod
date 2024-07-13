@@ -1,4 +1,4 @@
-module github.com/upbound/function-cidr
+module github.com/mproffitt/function-cidr
 
 go 1.22.1
 
